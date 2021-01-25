@@ -1,0 +1,118 @@
+global:
+  scrape_interval:     15s 
+  evaluation_interval: 15s 
+
+alerting:
+  alertmanagers:
+  - scheme: http
+  - static_configs:
+    - targets:
+       - 'alertmanager:9014'
+    
+rule_files:
+    - "prometheus_rules.yml"
+ 
+scrape_configs:
+
+- job_name: 'prometheus'
+  scrape_interval: 5s
+  static_configs:
+  - targets: ['<DashobardHostIP>:9015']
+   
+- job_name: 'alertmanager'
+  scrape_interval: 15s
+  static_configs:
+  - targets: ['alertmanager:9014']
+
+- job_name: 'node_exporter'
+  static_configs:
+  - targets: ['node_exporter:9011']
+
+- job_name: 'cadvisor'
+  static_configs:
+  - targets: ['<DashobardHostIP>:9017']
+      
+- job_name: 'postgres_exporter'
+  static_configs:
+  - targets: ['<DashobardHostIP>:9013']
+
+- job_name: 'fdm-directoryservice'
+  scheme: 'https'
+  static_configs:
+  - targets: ['<FDMServiceIP>:9001']
+  tls_config:
+    cert_file: /etc/certificates/MonitoringTool.crt
+    key_file: /etc/certificates/MonitoringTool.key
+    insecure_skip_verify: true
+  
+- job_name: 'fdm-queryservice'
+  scheme: 'https'
+  static_configs:
+  - targets: ['<FDMServiceIP>:9002']
+  tls_config:
+    cert_file: /etc/certificates/MonitoringTool.crt
+    key_file: /etc/certificates/MonitoringTool.key
+    insecure_skip_verify: true
+
+- job_name: 'fdm-apigatewayservice'
+  scheme: 'https'
+  static_configs:
+  - targets: ['<FDMServiceIP>:9005']
+  tls_config:
+    cert_file: /etc/certificates/MonitoringTool.crt
+    key_file: /etc/certificates/MonitoringTool.key
+    insecure_skip_verify: true
+    
+- job_name: 'fdm-xdspublishingservice'
+  scheme: 'https'
+  static_configs:
+  - targets: ['<FDMServiceIP>:9003']
+  tls_config:
+    cert_file: /etc/certificates/MonitoringTool.crt
+    key_file: /etc/certificates/MonitoringTool.key
+    insecure_skip_verify: true
+
+- job_name: 'fdm-xdsqueryservice'
+  scheme: 'https'
+  static_configs:
+  - targets: ['<FDMServiceIP>:9004']
+  tls_config:
+    cert_file: /etc/certificates/MonitoringTool.crt
+    key_file: /etc/certificates/MonitoringTool.key
+    insecure_skip_verify: true
+
+- job_name: 'fdm-routingservice'
+  scheme: 'https'
+  static_configs:
+  - targets: ['<FDMServiceIP>:9006']
+  tls_config:
+    cert_file: /etc/certificates/MonitoringTool.crt
+    key_file: /etc/certificates/MonitoringTool.key
+    insecure_skip_verify: true
+
+- job_name: 'fdm-listenerservice'
+  scheme: 'https'
+  static_configs:
+  - targets: ['<FDMServiceIP>:9007']
+  tls_config:
+    cert_file: /etc/certificates/MonitoringTool.crt
+    key_file: /etc/certificates/MonitoringTool.key
+    insecure_skip_verify: true
+
+- job_name: 'fdm-fdmfacadeservice'
+  scheme: 'https'
+  static_configs:
+  - targets: ['<FDMServiceIP>:9008']
+  tls_config:
+    cert_file: /etc/certificates/MonitoringTool.crt
+    key_file: /etc/certificates/MonitoringTool.key
+    insecure_skip_verify: true
+    
+- job_name: 'fdm-dataelementextractor'
+  scheme: 'https'
+  static_configs:
+  - targets: ['<FDMServiceIP>:9009']
+  tls_config:
+    cert_file: /etc/certificates/MonitoringTool.crt
+    key_file: /etc/certificates/MonitoringTool.key
+    insecure_skip_verify: true    

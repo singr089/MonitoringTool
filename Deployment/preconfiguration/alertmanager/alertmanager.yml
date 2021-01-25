@@ -1,0 +1,11 @@
+route:
+  group_by: ['alertname']
+  receiver: smtp-local
+receivers:
+  - name: 'smtp-local'
+    email_configs:
+    - to: <'to'>
+      from: <'from'>
+      require_tls: false
+      smarthost: localhost:25
+      send_resolved: true

@@ -1,0 +1,165 @@
+version: "3.6"
+
+services:
+    prometheus:
+        image: ${ImageRepo}prom/prometheus:v2.18.1
+        container_name: prometheus
+        command:
+           - '--config.file=/etc/prometheus/prometheus.yml'
+           - '--storage.tsdb.path=/prometheus'
+           - '--web.console.libraries=/etc/prometheus/console_libraries'
+           - '--web.console.templates=/etc/prometheus/consoles'
+           - '--web.route-prefix=/'
+           - '--web.external-url=http://dashboard/prometheus'
+        volumes:
+           - ${VolumeMountPath}/dashboardvolumes/prometheus/:/etc/prometheus/
+           - ${VolumeMountPath}/dashboardvolumes/PrometheusCerts/:/etc/certificates/           
+        ports:
+           - 9015:9090
+        restart: always   
+        networks:
+            - fdm_network
+
+    nginx:
+        image: ${ImageRepo}nginx:1.17
+        container_name: nginx
+        volumes:
+            - ${VolumeMountPath}/dashboardvolumes/nginx:/etc/nginx:ro
+            - ${VolumeMountPath}/dashboardvolumes/certificates:/root/certs/dashboard
+        ports:
+            - 9019:9019
+        restart: always
+        depends_on:
+            - prometheus
+        networks:
+            - fdm_network             
+         
+    cadvisor:
+        image: ${ImageRepo}google/cadvisor:v0.33.0
+        container_name: cadvisor
+        volumes:
+            - /:/rootfs:ro
+            - /var/run:/var/run:rw
+            - /sys:/sys:ro
+            - /var/lib/docker/:/var/lib/docker:ro
+        ports:
+            - 9017:8080  
+        depends_on:
+            - node-exporter            
+        restart: always
+        networks:
+            - fdm_network                   
+                
+    node-exporter:
+        image: ${ImageRepo}prom/node-exporter:v1.0.0
+        container_name: node_exporter
+        volumes:
+            - /proc:/host/proc:ro
+            - /sys:/host/sys:ro
+            - /:/rootfs:ro
+        command:
+          - '--web.listen-address=:9011'
+          - '--path.procfs=/host/proc'
+          - '--path.rootfs=/rootfs'
+          - '--path.sysfs=/host/sys'
+          - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+        restart: always
+        ports:
+            - '9011:9100'
+        networks:
+            - fdm_network     
+            
+    postgres:
+        image: ${ImageRepo}postgres:12.3
+        container_name: postgres
+        environment:
+            POSTGRES_DB: postgres
+            POSTGRES_PASSWORD: $DbPwd
+            POSTGRES_USER: $DbUser
+        volumes:
+            - ${VolumeMountPath}/dashboardvolumes/postgres-data:/var/lib/postgresql/data    
+        restart: always     
+        ports:
+            - 9012:5432
+            
+    postgres_exporter:
+        image: ${ImageRepo}wrouesnel/postgres_exporter:v0.5.1
+        container_name: postgres_exporter
+        depends_on:
+            - postgres
+        command:   
+            - '--extend.query-path=/etc/postgres_exporter/metrics.yaml'  
+            - '--web.listen-address=:9187'
+            - '--web.telemetry-path=/metrics'           
+        volumes:
+            - ${VolumeMountPath}/dashboardvolumes/postgres_exporter/:/opt/postgres_exporter/
+            - ${VolumeMountPath}/dashboardvolumes/postgres_exporter/metrics.yaml:/etc/postgres_exporter/
+        environment:
+            DATA_SOURCE_USER: $DbUser
+            DATA_SOURCE_PASS: $DbPwd
+            DATA_SOURCE_URI: postgres:5432/?sslmode=disable
+        restart: always    
+        ports:
+            - '9013:9187'  
+    
+    alertmanager:
+        image: ${ImageRepo}prom/alertmanager:v0.20.0
+        container_name: alertmanager
+        volumes:
+            - ${VolumeMountPath}/dashboardvolumes/alertmanager/:/etc/alertmanager/
+        command:
+            - '--web.listen-address=:9014'
+            - '--config.file=/etc/alertmanager/alertmanager.yml'
+            - '--storage.path=/alertmanager'
+        ports:
+            - '9014:9093'   
+        restart: always  
+        networks:
+            - fdm_network  
+    
+    grafana:
+        image: ${ImageRepo}grafana/grafana:6.7.3
+        container_name: grafana
+        volumes:
+            -   ${VolumeMountPath}/dashboardvolumes/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources/
+            -   ${VolumeMountPath}/dashboardvolumes/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards/
+            -   ${VolumeMountPath}/dashboardvolumes/grafana/plugins:/var/lib/grafana/plugins
+            -   ${VolumeMountPath}/dashboardvolumes/dashboards:/var/lib/grafana/dashboards/
+            -   ${VolumeMountPath}/dashboardvolumes/grafana/grafana.repo:/etc/yum.repos.d/grafana.repo
+            -   ${VolumeMountPath}/dashboardvolumes/certificates:/var/ssl
+            -   ${VolumeMountPath}/dashboardvolumes/grafana/grafana.ini:/etc/grafana/grafana.ini
+            
+        ports:
+            - '9016:3000'
+        networks:
+            - fdm_network
+        restart: always    
+            
+    loki:
+        image: ${ImageRepo}grafana/loki:1.5.0
+        container_name: loki
+        ports:
+            - "9018:3100"
+        command: 
+            -config.file=/etc/loki/local-config.yaml
+        networks:
+            - fdm_network   
+        restart: always    
+            
+    promtail:
+        image: ${ImageRepo}grafana/promtail:1.5.0
+        container_name: promtail
+        volumes:
+            - /var/log:/var/log
+            - /var/lib/docker/containers:/var/lib/docker/containers/
+            - ${VolumeMountPath}/dashboardvolumes/promtail/docker-config.yaml:/etc/promtail/docker-config.yaml
+        command: 
+            -config.file=/etc/promtail/docker-config.yaml
+        networks:
+            - fdm_network 
+        restart: always    
+
+networks:
+    fdm_network:
+        name: fdm_network
+
